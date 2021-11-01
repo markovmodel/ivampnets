@@ -14,6 +14,7 @@ The code includes:
 
 The code was executed using the following package versions:
 
+```
 python=3.6 or higher
 jupyterlab=3.2.0 or jupyter=1.0.0
 
@@ -21,8 +22,10 @@ pytorch=1.8.0
 deeptime=0.2.9
 numpy=1.19.5
 matplotlib=3.1.3
-
+```
 optional:
+```
 tensorboard=2.6.0
 h5py=1.10.4
+```
 
