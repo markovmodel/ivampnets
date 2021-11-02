@@ -552,9 +552,36 @@ class iVAMPnetModel(Transformer, Model):
         self._epsilon = epsilon
         self._mode = mode
         
-    def transform(self, data, numpy=True, **kwargs):
+    def transform(self, data, numpy=True, batchsize=0, **kwargs):
+        '''Transforms the supplied data with the model. It outputs the fuzzy state assignment for each
+        subsystem.
+        
+        Parameters
+        ----------
+        data: nd.array or torch.Tensor
+            Data which should be transformed to a fuzzy state assignment.
+        numpy: bool, default=True
+            If the output should be converted to a numpy array.
+        batchsize: int, default=0
+            The batchsize which should be used to predict one chunk of the data, which is useful, if 
+            data does not fit into the memory. If batchsize<=0 the whole dataset will be simultaneously 
+            transformed.
+            
+        Returns
+        -------
+        out: nd.array or torch.Tensor
+            The transformed data. If numpy=True the output will be a nd.array otherwise a torch.Tensor.
+        '''
         for lobe in self._lobes:
             lobe.eval()
+            
+        if batchsize>0:
+            batches = data.shape[0]//batchsize + (data.shape[0]%batchsize>0)
+            if isinstance(data, torch.Tensor):
+                torch.split(data, batches)
+            else:
+                data = np.array_split(data, batches)
+                
         out = [[] for _ in range(self._N)]
         with torch.no_grad():
             for data_tensor in map_data(data, device=self._device, dtype=self._dtype):
@@ -568,10 +595,30 @@ class iVAMPnetModel(Transformer, Model):
         return out if len(out) > 1 else out[0]
     
     
-    def get_transition_matrix(self, data_0, data_t):
+    def get_transition_matrix(self, data_0, data_t, batchsize=0):
+        ''' Estimates the transition matrix based on the two provided datasets, where each frame
+        should be lagtime apart.
         
-        chi_t_list = self.transform(data_0, numpy=False)
-        chi_tau_list = self.transform(data_t, numpy=False)
+        Parameters
+        ----------
+        data_0: nd.array or torch.Tensor
+            The instantaneous data.
+        data_t: nd.array or torch.Tensor
+            The time-lagged data.
+        batchsize: int, default=0
+            The batchsize which should be used to predict one chunk of the data, which is useful, if 
+            data does not fit into the memory. If batchsize<=0 the whole dataset will be simultaneously 
+            transformed.
+            
+        Returns
+        -------
+        T_list: list
+            The list of the transition matrices of all subsystems.
+        
+        '''
+        
+        chi_t_list = self.transform(data_0, numpy=False, batchsize=batchsize)
+        chi_tau_list = self.transform(data_t, numpy=False, batchsize=batchsize)
         T_list = []
         for n in range(self._N):
             chi_t, chi_tau = torch.cat(chi_t_list[n], dim=0), torch.cat(chi_tau_list[n], dim=0)
@@ -581,9 +628,30 @@ class iVAMPnetModel(Transformer, Model):
             T_list.append(T)
         return T_list
     
-    def timescales(self, data_0, data_t, tau):
+    def timescales(self, data_0, data_t, tau, batchsize=0):
+        ''' Estimates the timescales of the model given the provided data.
         
-        T_list = self.get_transition_matrix(data_0, data_t)
+        Parameters
+        ----------
+        data_0: nd.array or torch.Tensor
+            The instantaneous data.
+        data_t: nd.array or torch.Tensor
+            The time-lagged data.
+        tau: int
+            The time-lagged used for the data.
+        batchsize: int, default=0
+            The batchsize which should be used to predict one chunk of the data, which is useful, if 
+            data does not fit into the memory. If batchsize<=0 the whole dataset will be simultaneously 
+            transformed.
+            
+        Returns
+        -------
+        its: list
+            The list of the implied timescales of all subsystems.
+        
+        '''
+        
+        T_list = self.get_transition_matrix(data_0, data_t, batchsize=batchsize)
         its = []
         for T in T_list:
             eigvals = np.linalg.eigvals(T)
