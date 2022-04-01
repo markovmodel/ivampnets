@@ -2,7 +2,7 @@
 
 Codebase for the iVAMPnets estimator and model which includes the classes for constructing the masks for toymodels and real protein applications.
 The implemented methods allow to decompose a possible high dimensional system in its weakly coupled or independent subsystems. Thereby, the downstream estimation of the kinetic models is much more data efficient than estimating a global kinetic model which might not be feasible. The whole pipeline is an end-to-end deep learning framework which allows to define your own network architectures for the kinetics estimation of each subsystem. 
-The data for the synaptotagmin C2A system is available upon request. The code is designed to reproduce the results of our paper "A deep learning framework for the decomposition of macromolecules into independent VAMPnets" (Link will be added) and is based on the deeptime package (see https://deeptime-ml.github.io/latest/index.html). 
+The data for the synaptotagmin C2A system is available upon request. The code is designed to reproduce the results of our paper "Deep learning to decompose macromolecules into independent Markovian domains" (https://www.biorxiv.org/content/10.1101/2022.03.30.486366v1) and is based on the deeptime package (see https://deeptime-ml.github.io/latest/index.html). 
 
 The code includes:
 1. (ivampnets.py) The definition of the ivampnets estimator class, which allows to fit a given model to simulation data. The definition of the ivampnets model class - the resulting model - which can then be used to estimate transition matrices, implied timescales, eigenfunctions, etc.
