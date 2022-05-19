@@ -12,7 +12,7 @@ The code includes:
 5. (10Cube.ipynb) Notebook to reproduce the results for the 10-Cube example.
 6. (SynaptotagminC2A.ipynb) Notebook to reproduce the results for a protein example. The data of the synaptotagmin C2A domain is available upon request.
 
-The code was executed using the following package versions:
+The code was executed using the following package versions on a linux computer (debian bullseye):
 
 ```
 python=3.6 or higher
@@ -58,3 +58,5 @@ jupyter notebook
 ```
 
 Your browser should pop up pointing to a list of notebooks once you navigate into the repository directory. If it's the wrong browser, add for example `--browser=firefox` or copy and paste the URL into the browser of your choice.
+
+The typical install time ranges from 5 minutes for conda-users to 20 minutes if conda has to be set up from scratch.
