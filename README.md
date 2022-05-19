@@ -8,9 +8,9 @@ The code includes:
 1. (ivampnets.py) The definition of the ivampnets estimator class, which allows to fit a given model to simulation data. The definition of the ivampnets model class - the resulting model - which can then be used to estimate transition matrices, implied timescales, eigenfunctions, etc.
 2. (masks.py) The definition of the mask modules, which can be used to give the modeler an intuition which part of the global system is assigned to which subsystem.
 3. (examples.py) Helper functions to generate the data for the toy systems and plot some results.
-4. (Toymodel_2Systems.ipynb) Notebook to reproduce the results for a simple truly independent 2D system. 
-5. (10Cube.ipynb) Notebook to reproduce the results for the 10-Cube example.
-6. (SynaptotagminC2A.ipynb) Notebook to reproduce the results for a protein example. The data of the synaptotagmin C2A domain is available upon request.
+4. (Toymodel_2Systems.ipynb) Notebook to reproduce the results for a simple truly independent 2D system. Typical runtime (cpu): 2 min
+5. (10Cube.ipynb) Notebook to reproduce the results for the 10-Cube example. Typical runtime (cpu): 5 min
+6. (SynaptotagminC2A.ipynb) Notebook to reproduce the results for a protein example. The data of the synaptotagmin C2A domain is available upon request. Typical runtime (cuda): 1.5 hours
 
 The code was executed using the following package versions on a linux computer (debian bullseye):
 
