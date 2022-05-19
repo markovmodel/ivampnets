@@ -29,3 +29,32 @@ tensorboard=2.6.0
 h5py=1.10.4
 ```
 
+## Installation instructions
+
+The software dependencies can be installed with anaconda / miniconda. If you do not have miniconda or anaconda, please follow the instructions here: https://conda.io/miniconda.html
+
+The following command can be used to create a new conda environment and install all dependencies for the ivampnets scripts. 
+```bash
+conda create -n ivampnets pytorch=1.8.0 deeptime=0.2.9 numpy=1.19.5 matplotlib=3.1.3 jupyter h5py -c conda-forge
+```
+The new conda environment can be activated with
+```bash
+conda activate ivampnets
+```
+
+
+In case you are already a conda and jupyter notebook user with various environments, you can install your environment Python kernel via
+```bash
+python -m ipykernel install --user --name ivampnets
+```
+This repository including the python scripts and jupyter notebooks can be downloaded with 
+```bash
+git clone git@github.com:markovmodel/ivampnets.git
+```
+
+The following command will start the jupyter notebook server:
+```bash
+jupyter notebook
+```
+
+Your browser should pop up pointing to a list of notebooks once you navigate into the repository directory. If it's the wrong browser, add for example `--browser=firefox` or copy and paste the URL into the browser of your choice.
