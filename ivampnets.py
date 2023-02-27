@@ -708,7 +708,7 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
     _MUTABLE_INPUT_DATA = True
 
     def __init__(self, lobes: list, mask: nn.Module,
-                 device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
+                 device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4, learning_rate_mask: float = 5e-4,
                  score_mode: str = 'regularize', epsilon: float = 1e-6,
                  dtype=np.float32, shuffle: bool = True):
         super().__init__()
@@ -721,9 +721,10 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
         self._epsilon = epsilon
         self.device = device
         self.learning_rate = learning_rate
+        self.learning_rate_mask = learning_rate_mask
         self.dtype = dtype
         self.optimizer_lobes = [torch.optim.Adam(lobe.parameters(), lr=self.learning_rate) for lobe in self.lobes]
-        self.optimizer_mask = torch.optim.Adam(self.mask.parameters(), lr=self.learning_rate)
+        self.optimizer_mask = torch.optim.Adam(self.mask.parameters(), lr=self.learning_rate_mask)
         self._train_scores = []
         self._validation_scores = []
         self._train_vampe = []
@@ -922,7 +923,7 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
                                               
     def partial_fit(self, data, lam_decomp: float = 1., mask: bool = False, lam_trace: float = 0., 
                     train_score_callback: Callable[[int, torch.Tensor], None] = None,
-                   tb_writer=None, clip=False):
+                   tb_writer=None, clip=False, lam_pen_perc=None, lam_pen_C00=0., lam_pen_C11=0., lam_pen_C01=0.):
         r""" Performs a partial fit on data. This does not perform any batching.
 
         Parameters
@@ -991,8 +992,12 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
         # Estimate the sum of scores, !!! Check if mean is correct
         vamp_sum_score = torch.mean(torch.cat(scores_single, dim=0))
         vamp_score_pairs = torch.mean(torch.cat(score_pairs, dim=0))
-        
-        loss_value = - vamp_score_pairs + lam_decomp * pen_scores_all - lam_trace * trace_all
+        if lam_pen_perc is not None:
+            vamp_score_item, pen_score_item, pen_c00_item, pen_c11_item, pen_c01_item = vamp_score_pairs.item(), pen_scores_all.item(), pen_C00_map_all.item(), pen_C11_map_all.item(), pen_C01_map_all.item()
+            fac_pen_score, fac_pen_c00, fac_pen_c11, fac_pen_c01 = lam_pen_perc * vamp_score_item/pen_score_item, lam_pen_C00 * vamp_score_item/pen_c00_item, lam_pen_C11 * vamp_score_item/pen_c11_item, lam_pen_C01 * vamp_score_item/pen_c01_item
+            loss_value = - vamp_score_pairs - lam_trace * trace_all + fac_pen_score * pen_scores_all + fac_pen_c00 * pen_C00_map_all + fac_pen_c11 * pen_C11_map_all + fac_pen_c01 * pen_C01_map_all
+        else:
+            loss_value = - vamp_score_pairs + lam_decomp * pen_scores_all - lam_trace * trace_all
         loss_value.backward()
         if clip:
             # clip the gradients
@@ -1027,7 +1032,8 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
 
         return self
                                               
-    def validate(self, validation_data: Tuple[torch.Tensor], lam_decomp: float = 1., lam_trace: float = 0.) -> torch.Tensor:
+    def validate(self, validation_data: Tuple[torch.Tensor], lam_decomp: float = 1., lam_trace: float = 0.,
+                 lam_pen_perc=None, lam_pen_C00=0., lam_pen_C11=0., lam_pen_C01=0.) -> torch.Tensor:
         r""" Evaluates the currently set lobe(s) on validation data and returns the value of the configured score.
 
         Parameters
@@ -1070,7 +1076,12 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
             vamp_sum_score = torch.mean(torch.cat(scores_single, dim=0))
             vamp_score_pairs = torch.mean(torch.cat(score_pairs, dim=0))
 
-            loss_value = - vamp_score_pairs + lam_decomp * pen_scores_all - lam_trace * trace_all
+            if lam_pen_perc is not None:
+                vamp_score_item, pen_score_item, pen_c00_item, pen_c11_item, pen_c01_item = vamp_score_pairs.item(), pen_scores_all.item(), pen_C00_map_all.item(), pen_C11_map_all.item(), pen_C01_map_all.item()
+                fac_pen_score, fac_pen_c00, fac_pen_c11, fac_pen_c01 = lam_pen_perc * vamp_score_item/pen_score_item, lam_pen_C00 * vamp_score_item/pen_c00_item, lam_pen_C11 * vamp_score_item/pen_c11_item, lam_pen_C01 * vamp_score_item/pen_c01_item
+                loss_value = - vamp_score_pairs - lam_trace * trace_all + fac_pen_score * pen_scores_all + fac_pen_c00 * pen_C00_map_all + fac_pen_c11 * pen_C11_map_all + fac_pen_c01 * pen_C01_map_all
+            else:
+                loss_value = - vamp_score_pairs + lam_decomp * pen_scores_all - lam_trace * trace_all
             
             return loss_value, vamp_score_pairs, pen_scores_all, pen_C00_map_all, pen_C11_map_all, pen_C01_map_all, trace_all
 
@@ -1080,7 +1091,8 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
             start_mask: int = 0, end_trace: int = 0, 
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
             validation_score_callback: Callable[[int, torch.Tensor], None] = None,
-            tb_writer=None, reset_step=False, clip=False, save_criteria=None, **kwargs):
+            tb_writer=None, reset_step=False, clip=False, save_criteria=None, 
+            lam_pen_perc=None, lam_pen_C00=0., lam_pen_C11=0., lam_pen_C01=0., **kwargs):
         r""" Fits iVAMPnet on data.
 
         Parameters
@@ -1139,7 +1151,7 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
                 self.partial_fit((batch_0, batch_t), lam_decomp=lam_decomp, mask=train_mask,
                                  lam_trace=lam_trace, 
                                  train_score_callback=train_score_callback, tb_writer=tb_writer,
-                                 clip=clip)
+                                 clip=clip, lam_pen_perc=lam_pen_perc, lam_pen_C00=lam_pen_C00, lam_pen_C11=lam_pen_C11, lam_pen_C01=lam_pen_C01)
 
             if validation_loader is not None:
                 with torch.no_grad():
@@ -1151,7 +1163,7 @@ class iVAMPnet(DLEstimatorMixin, Transformer):
                     val_pen_C01 = []
                     val_trace = []
                     for val_batch in validation_loader:
-                        ret = self.validate((val_batch[0], val_batch[1]), lam_decomp=lam_decomp, lam_trace=lam_trace)
+                        ret = self.validate((val_batch[0], val_batch[1]), lam_decomp=lam_decomp, lam_trace=lam_trace, lam_pen_perc=lam_pen_perc, lam_pen_C00=lam_pen_C00, lam_pen_C11=lam_pen_C11, lam_pen_C01=lam_pen_C01)
                         loss_value, vamp_score_pairs, pen_scores_all, pen_C00_map_all, pen_C11_map_all, pen_C01_map_all, trace_all = ret
                         val_scores.append(-loss_value)
                         val_vamp_scores.append(vamp_score_pairs)
